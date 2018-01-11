@@ -22,25 +22,54 @@ class GenericModel:
                                                         max_text_len=7)
         self.data_gen.build_data()
         self.output_size = self.data_gen.get_output_size()
-        self.img_w = self.data_gen.img_w
-        self.img_h = self.data_gen.img_h
+        img_w = self.data_gen.img_w
+        img_h = self.data_gen.img_h
 
         if K.image_data_format() == 'channels_first':
-            self.input_shape = (1, self.img_w, self.img_h)
+            self.input_shape = (1, img_w, img_h)
         else:
-            self.input_shape = (self.img_w, self.img_h, 1)
+            self.input_shape = (img_w, img_h, 1)
+
+    @staticmethod
+    def convolution_maxpooling(layer, conv_filters, kernel_size, name_conv, name_pool, pool_size, padding='same',
+                               activation='relu',
+                               kernel_initializer='he_normal'):
+        inner = Conv2D(conv_filters, kernel_size, padding=padding,
+                       activation=activation, kernel_initializer=kernel_initializer,
+                       name=name_conv)(layer)
+        return MaxPooling2D(pool_size=(pool_size, pool_size), name=name_pool)(inner)
+
+    @staticmethod
+    def bi_lstm(layer, h_size, name, return_sequences=True, kernel_initializer='he_normal', merge_method="add"):
+        lstm_1 = LSTM(h_size, return_sequences=return_sequences, kernel_initializer=kernel_initializer, name=name)(
+            layer)
+        lstm_1b = LSTM(h_size, return_sequences=return_sequences, go_backwards=True,
+                       kernel_initializer=kernel_initializer, name=name + 'b')(layer)
+        if merge_method=="add":
+            return add([lstm_1, lstm_1b])
+        elif merge_method == "concatenate":
+            return concatenate([lstm_1, lstm_1b])
+        elif merge_method == None :
+            return lstm_1, lstm_1b
+        else :
+            print("You must give a method in order to merge the two directional layers")
+            raise Exception
+
+
+    @staticmethod
+    def ctc_lambda_func(args):
+        y_pred, labels, input_length, label_length = args
+        y_pred = y_pred[:, 2:, :]
+        return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
+
+
 
     def train(self,
-                    loss={'ctc': lambda y_true, y_pred: y_pred},
-                    load=False,
-                    save=False,
-                    nb_epochs=3,
-                    lr=0.001):
-
-        def ctc_lambda_func(args):
-            y_pred, labels, input_length, label_length = args
-            y_pred = y_pred[:, 2:, :]
-            return K.ctc_batch_cost(labels, y_pred, input_length, label_length)
+              loss={'ctc': lambda y_true, y_pred: y_pred},
+              load=False,
+              save=False,
+              nb_epochs=3,
+              lr=0.001):
 
         # model
         conv_filters = 16
@@ -48,39 +77,30 @@ class GenericModel:
         pool_size = 2
         rnn_size = 512
 
-        act = 'relu'
+        # the input layer
         input_data = Input(name='the_input', shape=self.input_shape, dtype='float32')
-        inner = Conv2D(conv_filters, kernel_size, padding='same',
-                       activation=act, kernel_initializer='he_normal',
-                       name='conv1')(input_data)
-        inner = MaxPooling2D(pool_size=(pool_size, pool_size), name='max1')(inner)
-        inner = Conv2D(conv_filters, kernel_size, padding='same',
-                       activation=act, kernel_initializer='he_normal',
-                       name='conv2')(inner)
-        inner = MaxPooling2D(pool_size=(pool_size, pool_size), name='max2')(inner)
 
-        conv_to_rnn_dims = (self.img_w // (pool_size ** 2), (self.img_h // (pool_size ** 2)) * conv_filters)
-        inner = Reshape(target_shape=conv_to_rnn_dims, name='reshape')(inner)
+        # the convolutional layers
+        conv1 = GenericModel.convolution_maxpooling(input_data, conv_filters, kernel_size, 'conv1', 'max1', pool_size)
+        conv2 = GenericModel.convolution_maxpooling(conv1, conv_filters, kernel_size, 'conv2', 'max2', pool_size)
 
-        lstm_1 = LSTM(rnn_size, return_sequences=True, kernel_initializer='he_normal', name='lstm_1')(inner)
-        lstm_1b = LSTM(rnn_size, return_sequences=True, go_backwards=True, kernel_initializer='he_normal',
-                       name='lstm_1b')(
-            inner)
-        lstm1_merged = add([lstm_1, lstm_1b])
-        lstm_2 = LSTM(rnn_size, return_sequences=True, kernel_initializer='he_normal', name='lstm2')(lstm1_merged)
-        lstm_2b = LSTM(rnn_size, return_sequences=True, go_backwards=True, kernel_initializer='he_normal',
-                       name='lstm_2b')(
-            lstm1_merged)
+        # reshape the last output of the convolution in order to be the input of the rnn
+        conv_to_rnn_dims = (conv2.get_shape().as_list()[1],
+                            (conv2.get_shape().as_list()[2]) * conv2.get_shape().as_list()[3])
+        inner = Reshape(target_shape=conv_to_rnn_dims, name='reshape')(conv2)
 
-        inner = Dense(self.output_size, kernel_initializer='he_normal',
-                      name='dense2')(concatenate([lstm_2, lstm_2b]))
+        # the lstm layers
+        lstm1_merged= GenericModel.bi_lstm(inner, rnn_size, 'lstm_1', merge_method="add")
+        lstm2_merged = GenericModel.bi_lstm(lstm1_merged, rnn_size, 'lstm_2',merge_method="concatenate")
+
+        # one last dense layer
+        inner = Dense(self.output_size, kernel_initializer='he_normal', name='dense2')(lstm2_merged)
         y_pred = Activation('softmax', name='softmax')(inner)
-        Model(inputs=input_data, outputs=y_pred).summary()
 
         labels = Input(name='the_labels', shape=[self.data_gen.max_text_len], dtype='float32')
         input_length = Input(name='input_length', shape=[1], dtype='int64')
         label_length = Input(name='label_length', shape=[1], dtype='int64')
-        loss_out = Lambda(ctc_lambda_func, output_shape=(1,), name='ctc')([y_pred, labels, input_length, label_length])
+        loss_out = Lambda(GenericModel.ctc_lambda_func, output_shape=(1,), name='ctc')([y_pred, labels, input_length, label_length])
 
         sgd = RMSprop(lr=lr)
         if load:
