@@ -90,12 +90,14 @@ class GenericModel:
         inner = Reshape(target_shape=conv_to_rnn_dims, name='reshape')(conv2)
 
         # the lstm layers
-        lstm1_merged= GenericModel.bi_lstm(inner, rnn_size, 'lstm_1', merge_method="add")
-        lstm2_merged = GenericModel.bi_lstm(lstm1_merged, rnn_size, 'lstm_2',merge_method="concatenate")
+        lstm1 = GenericModel.bi_lstm(inner, rnn_size, 'lstm_1', merge_method="add")
+        lstm2 = GenericModel.bi_lstm(lstm1, rnn_size, 'lstm_2',merge_method="concatenate")
 
         # one last dense layer
-        inner = Dense(self.output_size, kernel_initializer='he_normal', name='dense2')(lstm2_merged)
-        y_pred = Activation('softmax', name='softmax')(inner)
+        y_pred = Dense(self.output_size, kernel_initializer='he_normal', name='dense2', activation='softmax')(lstm2)
+
+        #inner = Dense(self.output_size, kernel_initializer='he_normal', name='dense2')(lstm2_merged)
+        #y_pred = Activation('softmax', name='softmax')(inner)
 
         labels = Input(name='the_labels', shape=[self.data_gen.max_text_len], dtype='float32')
         input_length = Input(name='input_length', shape=[1], dtype='int64')
