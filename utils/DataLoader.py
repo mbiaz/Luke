@@ -13,6 +13,8 @@ sess = tf.Session()
 K.set_session(sess)
 
 
+print("kj")
+
 class DataLoader:
 
     def __init__(self,
