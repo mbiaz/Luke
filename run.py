@@ -10,6 +10,7 @@ LOAD = sys.argv[4]
 TENSORBOARD = sys.argv[5]
 
 
+
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/models")
 mod = import_module(MODEL_NAME)
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/Utils")
