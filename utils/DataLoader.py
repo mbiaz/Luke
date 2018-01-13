@@ -13,7 +13,7 @@ sess = tf.Session()
 K.set_session(sess)
 
 
-class TextImageGenerator:
+class DataLoader:
 
     def __init__(self,
                  dirpath,
@@ -22,7 +22,7 @@ class TextImageGenerator:
                  max_text_len=7):
 
         self.dirpath = dirpath
-        self.letters = TextImageGenerator.get_letters(self.dirpath)
+        self.letters = DataLoader.get_letters(self.dirpath)
         self.batch_size = batch_size
         self.max_text_len = max_text_len
         self.downsample_factor = downsample_factor
@@ -72,8 +72,8 @@ class TextImageGenerator:
 
     @staticmethod
     def get_letters(dirpath):
-        c_train = TextImageGenerator.get_counter(dirpath + "/train/labels.json")
-        c_test = TextImageGenerator.get_counter(dirpath + "/test/labels.json")
+        c_train = DataLoader.get_counter(dirpath + "/train/labels.json")
+        c_test = DataLoader.get_counter(dirpath + "/test/labels.json")
         letters_test = set(c_test.keys())
         letters_train = set(c_train.keys())
         let = sorted(list(letters_train))

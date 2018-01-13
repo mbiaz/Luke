@@ -1,18 +1,10 @@
 import sys, os
-from keras import backend as K
-from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.layers import Input, Dense, Activation
-from keras.layers import Reshape, Lambda
-from keras.layers.merge import add, concatenate
 from keras.models import Model, load_model, save_model
-from keras.layers.recurrent import LSTM
-from keras.callbacks import TensorBoard
-from keras.optimizers import SGD, RMSprop
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/utils")
+import GenericModel
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-import model_lstm
-
-class MyModel(model_lstm.GenericModel):
+class MyModel(GenericModel.GenericModel):
 
 
     def build_model(self):

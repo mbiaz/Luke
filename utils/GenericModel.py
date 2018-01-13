@@ -9,14 +9,14 @@ from keras.callbacks import TensorBoard
 from keras.optimizers import SGD, RMSprop
 import sys, os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-import load_dataset
+import DataLoader
 
 
 class GenericModel:
     def __init__(self, dirpath,
                  batch_size, downsample_factor):  # downsample_factor= pool_size**2
 
-        self.data_gen = load_dataset.TextImageGenerator(dirpath=dirpath, batch_size=batch_size,
+        self.data_gen = DataLoader.DataLoader(dirpath=dirpath, batch_size=batch_size,
                                                         downsample_factor=downsample_factor,
                                                         max_text_len=7)
         self.data_gen.build_data()
@@ -91,6 +91,9 @@ class GenericModel:
     def load_model(loss, metrics, opt=RMSprop, name_model ='model.h5'):
         model = load_model(name_model, compile=False)
         return model.compile(loss=loss, optimizer=opt, metrics=metrics)
+
+
+
 
     def train(self,
               model,
