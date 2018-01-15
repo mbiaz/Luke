@@ -1,3 +1,5 @@
+import os
+import json
 from keras import backend as K
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.layers import Input, Dense, Activation
@@ -7,17 +9,22 @@ from keras.models import Model, load_model, save_model
 from keras.layers.recurrent import LSTM
 from keras.callbacks import TensorBoard
 from keras.optimizers import SGD, RMSprop
-import sys, os
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-import DataLoader
+from utils.DataLoader import DataLoader
 
 
 class GenericModel:
-    def __init__(self, dirpath,
-                 batch_size, downsample_factor):  # downsample_factor= pool_size**2
-
-        self.data_gen = DataLoader.DataLoader(dirpath=dirpath, batch_size=batch_size,
-                                                        downsample_factor=downsample_factor,
+    def __init__(self, dirpath):
+        self.optimizer = None
+        self.learning_rate = None
+        self.batch_size = None
+        self.metrics = None
+        self.loss = None
+        self.epochs = None
+        self.name_model = None
+        self.tensorboard = None
+        self.dirpath = dirpath
+        self.data_gen = DataLoader(dirpath=dirpath, batch_size=self.batch_size,
+                                                        downsample_factor=0,
                                                         max_text_len=7)
         self.data_gen.build_data()
         self.output_size = self.data_gen.get_output_size()
@@ -32,7 +39,9 @@ class GenericModel:
     @staticmethod
     def create_input(name, shape, dtype="float32"):
         return Input(name=name, shape=shape, dtype=dtype)
-
+    @staticmethod
+    def ctc_loss():
+        return {'ctc': lambda y_true, y_pred: y_pred}
     @staticmethod
     def convolution_maxpooling(layer, conv_filters, kernel_size, name_conv, name_pool, pool_size, padding='same',
                                activation='relu',
@@ -92,8 +101,8 @@ class GenericModel:
         model = load_model(name_model, compile=False)
         return model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
-
-
+    def initialize_training(self):
+        raise NotImplementedError
 
     def train(self,
               model,
@@ -101,28 +110,111 @@ class GenericModel:
               loss,
               metrics,
               nb_epochs,
-              save=False,
-              opt=RMSprop,
-              lr=0.001):
+              save,
+              opt,
+              lr):
 
         model.compile(loss=loss, optimizer=opt(lr), metrics=metrics)
-        history = model.fit_generator(generator=self.data_gen.next_batch(mode="train"),
+        history = model.fit_generator(generator=self.data_gen.next_batch(mode="train", batch_size=self.batch_size),
                                       steps_per_epoch=self.data_gen.n["train"],
                                       epochs=nb_epochs,
                                       callbacks=[tensorboard_callback],
-                                      validation_data=self.data_gen.next_batch(mode="test"),
+                                      validation_data=self.data_gen.next_batch(mode="test", batch_size=self.batch_size),
                                       validation_steps=self.data_gen.n["test"])
         if save:
-            model.save("model.h5")
-
+            print("saving model into : ")
+            print(os.getcwd() + '/saved_models/'+type(self).__name__)
+            os.path.exists(os.getcwd() + '/saved_models')
+            if not os.path.exists(os.getcwd() + '/saved_models/'+self.dirpath):
+                os.makedirs(os.getcwd() + '/saved_models/'+self.dirpath)
+            if os.path.exists(os.getcwd() + '/saved_models/'+self.dirpath+'/'+type(self).__name__+".h5") :
+                print("model already saved a long time ago ")
+                raise Exception
+            model.save(os.getcwd() + '/saved_models/'+self.dirpath+'/'+type(self).__name__+".h5")
         return model, history
 
-    def run_model(self, loss, metrics, tensorboard_callback, nb_epochs, save=False, load=False, opt=RMSprop, lr=0.001,
-                  name_model='model.h5'):
+    def run_model(self, save=False, load=False):
+
+        try:
+            self.initialize_training()
+        except Exception:
+            print("you need to over-load the method initialize_training in your model ")
+            raise Exception
+
+        if self.optimizer is None:
+            print("please provide an optimizer")
+            raise Exception
+
+        if self.learning_rate is None:
+            print("please provide a learning_rate")
+            raise Exception
+
+        if self.metrics is None:
+            print("please provide metrics")
+            raise Exception
+
+        if self.loss is None:
+            print("please provide a loss function")
+            raise Exception
+
+        if self.epochs is None:
+            print("please provide a number of epochs")
+            raise Exception
+
         if load :
-            model = GenericModel.load_model(loss, metrics, opt, name_model)
+            if self.name_model is None:
+                print("please provide a model name")
+                raise Exception
+
+        if self.tensorboard is None:
+            print("please provide a tensorboard callback object")
+            raise Exception
+
+        if load:
+            print("Loading model")
+            model = GenericModel.load_model(loss=self.loss,
+                                            metrics=self.metrics,
+                                            opt=self.optimizer,
+                                            name_model=self.name_model)
             history = []
-        else :
+        else:
             model = self.build_model()
-            model, history = self.train(model, tensorboard_callback, loss, metrics, nb_epochs, save, opt, lr )
+            with open(os.getcwd() + '/summaries/'+type(self).__name__+'.txt','w') as fh:
+                model.summary(print_fn=lambda x: fh.write(x + '\n'))
+
+            model, history = self.train(model=model,
+                                        tensorboard_callback=self.tensorboard,
+                                        loss=self.loss,
+                                        metrics=self.metrics,
+                                        nb_epochs=self.epochs,
+                                        save=save,
+                                        opt=self.optimizer,
+                                        lr=self.learning_rate)
+            with open(os.getcwd()+'/logs/'+type(self).__name__+'.json','w') as log_file:
+                log = {}
+                log["name"] = type(self).__name__
+                log["batch_size"] = self.batch_size
+                log["optimizer"]= self.optimizer.__name__
+                log["learning_rate"] = self.learning_rate
+                log["epochs"] = self.epochs
+                log["nb_train"]= self.data_gen.n["train"]
+                log["nb_test"]= self.data_gen.n["test"]
+                log["data_dim"]= [int(self.input_shape[0]), int(self.input_shape[1]),int( self.input_shape[2])]
+                var_log = {}
+                for keys_indicators in history.history.keys():
+                    var_log[keys_indicators] = history.history[keys_indicators]
+                print(var_log)
+                log["train"]={}
+                for i in range(self.epochs):
+                    log["train"][str(i)]= {}
+                    for keys_indicators in history.history.keys():
+                        log["train"][str(i)][keys_indicators] = var_log[keys_indicators][i]
+
+                log["max_values"] = {}
+                for keys_indicators in history.history.keys():
+                    log["max_values"][keys_indicators] = sorted(var_log[keys_indicators])[-1]
+                json_string = model.to_json()
+                log["summary"]=json_string
+                json.dump(log, log_file, indent=4)
+
         return model, history

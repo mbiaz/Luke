@@ -6,14 +6,12 @@ import cv2
 import numpy as np
 from keras import backend as K
 import tensorflow as tf
-import sys
 import random
 
 sess = tf.Session()
 K.set_session(sess)
 
 
-print("kj")
 
 class DataLoader:
 
@@ -23,15 +21,15 @@ class DataLoader:
                  batch_size=8,
                  max_text_len=7):
 
-        self.dirpath = dirpath
+        self.dirpath = join("datasets/",dirpath)
         self.letters = DataLoader.get_letters(self.dirpath)
         self.batch_size = batch_size
         self.max_text_len = max_text_len
         self.downsample_factor = downsample_factor
 
-        img_dirpath = {'train': join(dirpath, 'train/images'), 'test': join(dirpath, 'test/images')}
-        labels = {'train': json.load(open(join(dirpath, 'train/labels.json'), 'r')),
-                  'test': json.load(open(join(dirpath, 'test/labels.json'), 'r'))}
+        img_dirpath = {'train': join(self.dirpath, 'train/images'), 'test': join(self.dirpath, 'test/images')}
+        labels = {'train': json.load(open(join(self.dirpath, 'train/labels.json'), 'r')),
+                  'test': json.load(open(join(self.dirpath, 'test/labels.json'), 'r'))}
 
         self.samples = {'train': [], 'test': []}
         for mode in ["train", "test"]:
@@ -122,7 +120,8 @@ class DataLoader:
         return self.imgs[mode][self.indexes[mode][self.cur_index[mode]]], self.texts[mode][
             self.indexes[mode][self.cur_index[mode]]]
 
-    def next_batch(self, mode):
+    def next_batch(self, mode, batch_size):
+        self.batch_size = batch_size
         while True:
             if K.image_data_format() == 'channels_first':
                 X_data = np.ones([self.batch_size, 1, self.img_w, self.img_h])

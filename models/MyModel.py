@@ -1,17 +1,21 @@
-import sys, os
-from keras.layers import Input, Dense, Activation
-from keras.models import Model, load_model, save_model
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/utils")
-import GenericModel
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
-class MyModel(GenericModel.GenericModel):
+from keras.layers import Dense
+from keras.models import Model
+from keras.optimizers import RMSprop
+from utils.GenericModel import GenericModel
 
+
+class MyModel(GenericModel):
 
     def build_model(self):
         conv_filters = 16
         kernel_size = (3, 3)
         pool_size = 2
         rnn_size = 512
+        self.data_gen.downsample_factor = pool_size ** 2
 
         input_data = MyModel.create_input(name='the_input', shape=self.input_shape, dtype='float32')
 
@@ -33,3 +37,17 @@ class MyModel(GenericModel.GenericModel):
                                                                          name_loss='ctc')
 
         return Model(inputs=[input_data, labels, input_length, label_length], outputs=loss_out)
+
+    def initialize_training(self):
+        self.optimizer = RMSprop
+        self.learning_rate = 0.001
+        self.batch_size = 8
+        self.metrics = ["binary_accuracy"]
+        self.loss = self.ctc_loss()
+        self.epochs = 1
+        self.name_model = "model.h5"
+        self.tensorboard = self.create_tb_callbacks("./tensorboard")
+
+
+
+
