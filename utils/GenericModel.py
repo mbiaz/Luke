@@ -20,9 +20,9 @@ class GenericModel:
         self.metrics = None
         self.loss = None
         self.epochs = None
-        self.name_model = os.getcwd() + '/saved_models/'+self.dirpath+'/'+type(self).__name__+".h5"
-        self.tensorboard = self.create_tb_callbacks("./tensorboards/"+self.dirpath+'/'+type(self).__name__)
         self.dirpath = dirpath
+        self.tensorboard = self.create_tb_callbacks("./tensorboards/"+self.dirpath+'/'+type(self).__name__)
+        self.name_model = os.getcwd() + '/saved_models/'+self.dirpath+'/'+type(self).__name__+".h5"
         self.data_gen = DataLoader(dirpath=dirpath, batch_size=self.batch_size,
                                                         downsample_factor=0,
                                                         max_text_len=7)
