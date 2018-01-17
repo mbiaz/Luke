@@ -20,7 +20,8 @@ if __name__ == '__main__':
     t_tensorboard = threading.Thread(target=launchTensorBoard, args=([DATASET+'/'+MODEL]))
     t_tensorboard.start()
     mod = import_module(MODEL)
-    model = mod.MyModel(dirpath=DATASET)
+    class_ = getattr(mod, MODEL)
+    model = class_(dirpath=DATASET)
     model.run_model(save=SAVE,
                     load=LOAD)
     os.kill(os.getpid(),1)
