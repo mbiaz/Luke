@@ -18,13 +18,12 @@ class DataLoader:
     def __init__(self,
                  dirpath,
                  downsample_factor,
-                 batch_size=8,
-                 max_text_len=7):
+                 batch_size=8):
 
         self.dirpath = join("datasets/",dirpath)
         self.letters = DataLoader.get_letters(self.dirpath)
         self.batch_size = batch_size
-        self.max_text_len = max_text_len
+        self.max_text_len = DataLoader.get_max_text_len(self.dirpath)
         self.downsample_factor = downsample_factor
 
         img_dirpath = {'train': join(self.dirpath, 'train/images'), 'test': join(self.dirpath, 'test/images')}
@@ -53,6 +52,17 @@ class DataLoader:
             text += description[idx]
 
         return Counter(text)
+
+    @staticmethod
+    def get_max_text_len(dirpath):
+        description = json.load(open(dirpath, 'r'))
+        max_text_len = 0
+        for idx in description:
+            if len(description[idx] > max_text_len :
+                max_text_len = len(description[idx]
+
+
+        return max_text_len
 
     def get_images_dimensions(self):
         dimensions = np.zeros((self.n["train"] + self.n["test"], 3), dtype=np.int)

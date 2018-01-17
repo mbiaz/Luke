@@ -24,8 +24,7 @@ class GenericModel:
         self.tensorboard = self.create_tb_callbacks("./tensorboards/"+self.dirpath+'/'+type(self).__name__)
         self.name_model = os.getcwd() + '/saved_models/'+self.dirpath+'/'+type(self).__name__+".h5"
         self.data_gen = DataLoader(dirpath=dirpath, batch_size=self.batch_size,
-                                                        downsample_factor=0,
-                                                        max_text_len=7)
+                                                        downsample_factor=0)
         self.data_gen.build_data()
         self.output_size = self.data_gen.get_output_size()
         img_w = self.data_gen.img_w
