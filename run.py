@@ -17,7 +17,7 @@ def getopts(argv):
 if __name__ == '__main__':
     MODEL, DATASET, SAVE, LOAD = getopts(sys.argv)
     sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/models")
-    t_tensorboard = threading.Thread(target=launchTensorBoard, args=(["MyModel"]))
+    t_tensorboard = threading.Thread(target=launchTensorBoard, args=([DATASET+'/'+MODEL]))
     t_tensorboard.start()
     mod = import_module(MODEL)
     model = mod.MyModel(dirpath=DATASET)

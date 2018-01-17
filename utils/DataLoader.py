@@ -23,7 +23,7 @@ class DataLoader:
         self.dirpath = join("datasets/",dirpath)
         self.letters = DataLoader.get_letters(self.dirpath)
         self.batch_size = batch_size
-        self.max_text_len = DataLoader.get_max_text_len(self.dirpath)
+        self.max_text_len = DataLoader.get_max_text_len(self.dirpath+ "/train/labels.json")
         self.downsample_factor = downsample_factor
 
         img_dirpath = {'train': join(self.dirpath, 'train/images'), 'test': join(self.dirpath, 'test/images')}
@@ -58,8 +58,8 @@ class DataLoader:
         description = json.load(open(dirpath, 'r'))
         max_text_len = 0
         for idx in description:
-            if len(description[idx] > max_text_len :
-                max_text_len = len(description[idx]
+            if len(description[idx]) > max_text_len :
+                max_text_len = len(description[idx])
 
 
         return max_text_len
