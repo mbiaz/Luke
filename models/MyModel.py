@@ -45,8 +45,6 @@ class MyModel(GenericModel):
         self.metrics = ["binary_accuracy"]
         self.loss = self.ctc_loss()
         self.epochs = 1
-        self.name_model = "model.h5"
-        self.tensorboard = self.create_tb_callbacks("./tensorboard")
 
 
 

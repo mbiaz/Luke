@@ -20,8 +20,8 @@ class GenericModel:
         self.metrics = None
         self.loss = None
         self.epochs = None
-        self.name_model = None
-        self.tensorboard = None
+        self.name_model = os.getcwd() + '/saved_models/'+self.dirpath+'/'+type(self).__name__+".h5"
+        self.tensorboard = self.create_tb_callbacks("./tensorboards/"+self.dirpath+'/'+type(self).__name__)
         self.dirpath = dirpath
         self.data_gen = DataLoader(dirpath=dirpath, batch_size=self.batch_size,
                                                         downsample_factor=0,
@@ -97,7 +97,7 @@ class GenericModel:
         raise NotImplementedError
 
     @staticmethod
-    def load_model(loss, metrics, opt=RMSprop, name_model ='model.h5'):
+    def load_model(loss, metrics, opt, name_model):
         model = load_model(name_model, compile=False)
         return model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
@@ -123,8 +123,7 @@ class GenericModel:
                                       validation_steps=self.data_gen.n["test"])
         if save:
             print("saving model into : ")
-            print(os.getcwd() + '/saved_models/'+type(self).__name__)
-            os.path.exists(os.getcwd() + '/saved_models')
+
             if not os.path.exists(os.getcwd() + '/saved_models/'+self.dirpath):
                 os.makedirs(os.getcwd() + '/saved_models/'+self.dirpath)
             if os.path.exists(os.getcwd() + '/saved_models/'+self.dirpath+'/'+type(self).__name__+".h5") :
@@ -161,14 +160,8 @@ class GenericModel:
             print("please provide a number of epochs")
             raise Exception
 
-        if load :
-            if self.name_model is None:
-                print("please provide a model name")
-                raise Exception
 
-        if self.tensorboard is None:
-            print("please provide a tensorboard callback object")
-            raise Exception
+
 
         if load:
             print("Loading model")
@@ -181,6 +174,7 @@ class GenericModel:
             model = self.build_model()
             with open(os.getcwd() + '/summaries/'+type(self).__name__+'.txt','w') as fh:
                 model.summary(print_fn=lambda x: fh.write(x + '\n'))
+
 
             model, history = self.train(model=model,
                                         tensorboard_callback=self.tensorboard,

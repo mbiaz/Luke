@@ -4,15 +4,15 @@ import logging
 import os
 
 
-def tensdir_exists():
-    return os.path.exists(os.getcwd() + '/tensorboard')
+def tensdir_exists(dir):
+    return os.path.exists(os.getcwd() + '/tensorboards/'+dir)
 
 
-def launchTensorBoard():
-    while not (tensdir_exists()):
+def launchTensorBoard(dir):
+    while not (tensdir_exists(dir)):
         time.sleep(10)
 
     print("hey motherfucker")
-    os.system('tensorboard --logdir=' + os.getcwd() + '/tensorboard' + ' --port=8083')
+    os.system('tensorboard --logdir=' + os.getcwd() + '/tensorboards/'+dir+ ' --port=8083')
     print("bye motherfucker")
     return
